@@ -1,98 +1,150 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'supersecretkey'
-DB_PATH = '/mnt/data/finansesprog.db'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "finansesprogr.db")
 
-def create_connection():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+class DatabaseManager:
+    def __init__(self, db_path):
+        self.db_path = db_path
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        lietotajvards = request.form['lietotajvards']
-        parole = generate_password_hash(request.form['parole'])
-        conn = create_connection()
+    def connect(self):
+        return sqlite3.connect(self.db_path, check_same_thread=False)
+
+    def execute_query(self, query, params=(), fetch_one=False, fetch_all=False, commit=False):
+        conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO Lietotajs (lietotajvards, parole) VALUES (?, ?)", (lietotajvards, parole))
-        conn.commit()
+        cursor.execute(query, params)
+        data = None
+        if fetch_one:
+            data = cursor.fetchone()
+        elif fetch_all:
+            data = cursor.fetchall()
+        if commit:
+            conn.commit()
         conn.close()
-        return redirect(url_for('login'))
-    return render_template('register.html')
+        return data
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        lietotajvards = request.form['lietotajvards']
-        parole = request.form['parole']
-        conn = create_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, parole FROM Lietotajs WHERE lietotajvards = ?", (lietotajvards,))
-        user = cursor.fetchone()
-        conn.close()
-        if user and check_password_hash(user[1], parole):
-            session['user_id'] = user[0]
+
+class FinansuApp:
+    def __init__(self):
+        self.app = Flask(__name__)
+        self.app.config['SECRET_KEY'] = 'supersecretkey'
+        self.db = DatabaseManager(DB_PATH)
+        self.setup_routes()
+
+    def setup_routes(self):
+        self.app.add_url_rule('/', 'index', self.index)
+        self.app.add_url_rule('/register', 'register', self.register, methods=['GET', 'POST'])
+        self.app.add_url_rule('/login', 'login', self.login, methods=['GET', 'POST'])
+        self.app.add_url_rule('/dashboard', 'dashboard', self.dashboard)
+        self.app.add_url_rule('/ienakumi', 'ienakumi', self.ienakumi)
+        self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi)
+        self.app.add_url_rule('/merki', 'merki', self.merki)
+        self.app.add_url_rule('/logout', 'logout', self.logout)
+
+    def index(self):
+        if 'user_id' in session:
             return redirect(url_for('dashboard'))
-    return render_template('login.html')
-
-@app.route('/dashboard')
-def dashboard():
-    if 'user_id' not in session:
         return redirect(url_for('login'))
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Ienakumi WHERE user_id = ?", (session['user_id'],))
-    ienakumi = cursor.fetchall()
-    cursor.execute("SELECT * FROM Izdevumi WHERE user_id = ?", (session['user_id'],))
-    izdevumi = cursor.fetchall()
-    cursor.execute("SELECT * FROM Merki WHERE user_id = ?", (session['user_id'],))
-    merki = cursor.fetchall()
-    conn.close()
-    return render_template('dashboard.html', ienakumi=ienakumi, izdevumi=izdevumi, merki=merki)
 
-@app.route('/ienakumi')
-def ienakumi():
-    if 'user_id' not in session:
+    def register(self):
+        if request.method == 'POST':
+            lietotajvards = request.form['lietotajvards']
+            parole = request.form['parole']
+            parole2 = request.form['parole2']
+
+            if parole != parole2:
+                flash("Paroles nesakrīt!", "danger")
+                return redirect(url_for('register'))
+
+            hashed_password = generate_password_hash(parole)
+
+            user_exists = self.db.execute_query(
+                "SELECT * FROM Lietotajs WHERE lietotajvards = ?", (lietotajvards,), fetch_one=True)
+            if user_exists:
+                flash("Lietotājvārds jau eksistē!", "danger")
+                return redirect(url_for('register'))
+
+            self.db.execute_query(
+                "INSERT INTO Lietotajs (lietotajvards, parole) VALUES (?, ?)",
+                (lietotajvards, hashed_password), commit=True)
+
+            flash("Reģistrācija veiksmīga! Tagad vari pieslēgties.", "success")
+            return redirect(url_for('login'))
+        return render_template('register.html')
+
+    def login(self):
+        if request.method == 'POST':
+            lietotajvards = request.form['lietotajvards']
+            parole = request.form['parole']
+
+            user = self.db.execute_query(
+                "SELECT user_id, parole FROM Lietotajs WHERE lietotajvards = ?",
+                (lietotajvards,), fetch_one=True)
+
+            if user and check_password_hash(user[1], parole):
+                session['user_id'] = user[0]
+                flash("Veiksmīgi ielogojies!", "success")
+                return redirect(url_for('dashboard'))
+            else:
+                flash("Nepareizs lietotājvārds vai parole.", "danger")
+        return render_template('login.html')
+
+    def dashboard(self):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+
+        ienakumi = self.db.execute_query(
+            "SELECT * FROM Ienakumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        izdevumi = self.db.execute_query(
+            "SELECT * FROM Izdevumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        merki = self.db.execute_query(
+            "SELECT * FROM Merki WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        return render_template('dashboard.html', ienakumi=ienakumi, izdevumi=izdevumi, merki=merki)
+
+    def ienakumi(self):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        ienakumi = self.db.execute_query(
+            "SELECT * FROM Ienakumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+        return render_template('ienakumi.html', ienakumi=ienakumi)
+
+    def izdevumi(self):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        izdevumi = self.db.execute_query(
+            "SELECT * FROM Izdevumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+        return render_template('izdevumi.html', izdevumi=izdevumi)
+
+    def merki(self):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        merki = self.db.execute_query(
+            "SELECT * FROM Merki WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+        return render_template('merki.html', merki=merki)
+
+    def logout(self):
+        session.pop('user_id', None)
+        flash("Tu esi izlogojies.", "success")
         return redirect(url_for('login'))
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Ienakumi WHERE user_id = ?", (session['user_id'],))
-    ienakumi = cursor.fetchall()
-    conn.close()
-    return render_template('ienakumi.html', ienakumi=ienakumi)
 
-@app.route('/izdevumi')
-def izdevumi():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Izdevumi WHERE user_id = ?", (session['user_id'],))
-    izdevumi = cursor.fetchall()
-    conn.close()
-    return render_template('izdevumi.html', izdevumi=izdevumi)
+    def run(self):
+        self.app.run(debug=True)
 
-@app.route('/merki')
-def merki():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Merki WHERE user_id = ?", (session['user_id'],))
-    merki = cursor.fetchall()
-    conn.close()
-    return render_template('merki.html', merki=merki)
-
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app = FinansuApp()
+    app.run()

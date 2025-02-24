@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mērķi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+    <h2>Jūsu finanšu mērķi</h2>
+    <table class="table table-bordered">
+        <tr>
+            <th>Nosaukums</th>
+            <th>Summa</th>
+            <th>Statuss</th>
+        </tr>
+        {% for merki in merki %}
+        <tr>
+            <td>{{ merki[2] }}</td>
+            <td>{{ merki[3] }} €</td>
+            <td>{% if merki[4] == 1 %} Sasniegts {% else %} Notiek {% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="/dashboard" class="btn btn-secondary">Atpakaļ</a>
+</body>
+</html>
