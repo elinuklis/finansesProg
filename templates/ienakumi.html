@@ -7,21 +7,42 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-5">
-    <h2>Jūsu ienākumi</h2>
-    <table class="table table-bordered">
-        <tr>
-            <th>Summa</th>
-            <th>Kategorija</th>
-            <th>Datums</th>
-        </tr>
-        {% for ienakums in ienakumi %}
-        <tr>
-            <td>{{ ienakums[2] }} €</td>
-            <td>{{ ienakums[3] }}</td>
-            <td>{{ ienakums[4] }}</td>
-        </tr>
+    <h2>Ienākumi</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
         {% endfor %}
-    </table>
-    <a href="/dashboard" class="btn btn-secondary">Atpakaļ</a>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="kategorija" class="form-label">Kategorija</label>
+            <select class="form-control" name="kategorija" required>
+                {% for kategorija in kategorijas %}
+                    <option value="{{ kategorija[0] }}">{{ kategorija[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="summa" class="form-label">Summa</label>
+            <input type="number" class="form-control" name="summa" required>
+        </div>
+        <button type="submit" class="btn btn-success">Pievienot ienākumu</button>
+    </form>
+
+    <h3 class="mt-4">Esošie ienākumi</h3>
+    <ul class="list-group">
+        {% for ienakums in ienakumi %}
+            <li class="list-group-item">{{ ienakums[2] }} - {{ ienakums[3] }}€</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">Atpakaļ</a>
 </body>
 </html>

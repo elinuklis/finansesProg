@@ -41,8 +41,8 @@ class FinansuApp:
         self.app.add_url_rule('/register', 'register', self.register, methods=['GET', 'POST'])
         self.app.add_url_rule('/login', 'login', self.login, methods=['GET', 'POST'])
         self.app.add_url_rule('/dashboard', 'dashboard', self.dashboard)
-        self.app.add_url_rule('/ienakumi', 'ienakumi', self.ienakumi)
-        self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi)
+        self.app.add_url_rule('/ienakumi', 'ienakumi', self.ienakumi, methods=['GET', 'POST'])
+        self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi, methods=['GET', 'POST'])
         self.app.add_url_rule('/merki', 'merki', self.merki)
         self.app.add_url_rule('/logout', 'logout', self.logout)
 
@@ -115,22 +115,68 @@ class FinansuApp:
     def ienakumi(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        ienakumi = self.db.execute_query(
-            "SELECT * FROM Ienakumi WHERE user_id = ?",
+
+        if request.method == 'POST':
+            summa = request.form['summa']
+            kategorija = request.form['kategorija']
+
+            self.db.execute_query(
+                "INSERT INTO Ienakumi (user_id, summa, kategorija) VALUES (?, ?, ?)",
+                (session['user_id'], summa, kategorija), commit=True)
+
+            flash("Ienākums veiksmīgi pievienots!", "success")
+            return redirect(url_for('ienakumi'))
+
+        kategorijas = self.db.execute_query(
+            "SELECT DISTINCT kategorija FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
-        return render_template('ienakumi.html', ienakumi=ienakumi)
+
+        ienakumi = self.db.execute_query(
+            "SELECT summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=[k[0] for k in kategorijas])
+
 
     def izdevumi(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        izdevumi = self.db.execute_query(
-            "SELECT * FROM Izdevumi WHERE user_id = ?",
+
+        if request.method == 'POST':
+            summa = request.form['summa']
+            kategorija = request.form['kategorija']
+
+            self.db.execute_query(
+                "INSERT INTO Izdevumi (user_id, summa, kategorija) VALUES (?, ?, ?)",
+                (session['user_id'], summa, kategorija), commit=True)
+
+            flash("Izdevums veiksmīgi pievienots!", "success")
+            return redirect(url_for('izdevumi'))
+
+        kategorijas = self.db.execute_query(
+            "SELECT DISTINCT kategorija FROM Izdevumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
-        return render_template('izdevumi.html', izdevumi=izdevumi)
+
+        izdevumi = self.db.execute_query(
+            "SELECT summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=[k[0] for k in kategorijas])
+
 
     def merki(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
+
+        if request.method == 'POST':
+            nosaukums = request.form['nosaukums']
+            merka_summa = request.form['merka_summa']
+            self.db.execute_query(
+                "INSERT INTO Merki (user_id, nosaukums, merka_summa) VALUES (?, ?, ?)",
+                (session['user_id'], nosaukums, merka_summa), commit=True)
+            flash("Mērķis veiksmīgi pievienots!", "success")
+            return redirect(url_for('merki'))
+
         merki = self.db.execute_query(
             "SELECT * FROM Merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
