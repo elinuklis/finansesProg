@@ -2,6 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+from datetime import datetime
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "finansesprogr.db")
@@ -43,8 +44,9 @@ class FinansuApp:
         self.app.add_url_rule('/dashboard', 'dashboard', self.dashboard)
         self.app.add_url_rule('/ienakumi', 'ienakumi', self.ienakumi, methods=['GET', 'POST'])
         self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi, methods=['GET', 'POST'])
-        self.app.add_url_rule('/merki', 'merki', self.merki)
+        self.app.add_url_rule('/merki', 'merki', self.merki, methods=['GET', 'POST'])
         self.app.add_url_rule('/logout', 'logout', self.logout)
+        self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki)
 
     def index(self):
         if 'user_id' in session:
@@ -116,53 +118,52 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
+        kategorijas = ['Alga', 'Pārdošana', 'Pabalsts', 'Dāvana', 'Nodokļu atmaksas', 'Investīciju ienākumi', 'Cits']
+
         if request.method == 'POST':
             summa = request.form['summa']
             kategorija = request.form['kategorija']
 
+            datums = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             self.db.execute_query(
-                "INSERT INTO Ienakumi (user_id, summa, kategorija) VALUES (?, ?, ?)",
-                (session['user_id'], summa, kategorija), commit=True)
+                "INSERT INTO Ienakumi (user_id, summa, kategorija, datums) VALUES (?, ?, ?, ?)",
+                (session['user_id'], summa, kategorija, datums), commit=True)
 
             flash("Ienākums veiksmīgi pievienots!", "success")
             return redirect(url_for('ienakumi'))
-
-        kategorijas = self.db.execute_query(
-            "SELECT DISTINCT kategorija FROM Ienakumi WHERE user_id = ?",
-            (session['user_id'],), fetch_all=True)
 
         ienakumi = self.db.execute_query(
             "SELECT summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=[k[0] for k in kategorijas])
+        return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=kategorijas)
 
 
     def izdevumi(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
+        kategorijas = ['Pārtika', 'Transports', 'Īre', 'Izklaide', 'Apģērbs', 'Veselība', 'Izglītība', 'Sports', 'Dāvanas, ziedojumi', 'Rēķini', 'Cits']
+
         if request.method == 'POST':
             summa = request.form['summa']
             kategorija = request.form['kategorija']
 
+            datums = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
             self.db.execute_query(
-                "INSERT INTO Izdevumi (user_id, summa, kategorija) VALUES (?, ?, ?)",
-                (session['user_id'], summa, kategorija), commit=True)
+                "INSERT INTO Izdevumi (user_id, summa, kategorija, datums) VALUES (?, ?, ?, ?)",
+                (session['user_id'], summa, kategorija, datums), commit=True)
 
             flash("Izdevums veiksmīgi pievienots!", "success")
             return redirect(url_for('izdevumi'))
-
-        kategorijas = self.db.execute_query(
-            "SELECT DISTINCT kategorija FROM Izdevumi WHERE user_id = ?",
-            (session['user_id'],), fetch_all=True)
 
         izdevumi = self.db.execute_query(
             "SELECT summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=[k[0] for k in kategorijas])
-
+        return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=kategorijas)
 
     def merki(self):
         if 'user_id' not in session:
@@ -170,17 +171,37 @@ class FinansuApp:
 
         if request.method == 'POST':
             nosaukums = request.form['nosaukums']
-            merka_summa = request.form['merka_summa']
+            summa = request.form['summa']
+            kategorija = request.form.get('kategorija')
+            periods = request.form['periods']
+            
+            sasniegts = 0
+
             self.db.execute_query(
-                "INSERT INTO Merki (user_id, nosaukums, merka_summa) VALUES (?, ?, ?)",
-                (session['user_id'], nosaukums, merka_summa), commit=True)
+                "INSERT INTO Merki (user_id, nosaukums, summa, sasniegts, kategorija, periods) VALUES (?, ?, ?, ?, ?, ?)",
+                (session['user_id'], nosaukums, summa, sasniegts, kategorija, periods), commit=True)
+            
             flash("Mērķis veiksmīgi pievienots!", "success")
             return redirect(url_for('merki'))
 
         merki = self.db.execute_query(
             "SELECT * FROM Merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
+        
         return render_template('merki.html', merki=merki)
+    
+    def delete_merki(self, merki_id):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+
+        self.db.execute_query(
+            "DELETE FROM Merki WHERE user_id = ? AND merki_id = ?",
+            (session['user_id'], merki_id), commit=True)
+
+        flash("Mērķis veiksmīgi izdzēsts!", "success")
+        return redirect(url_for('merki')) 
+    
+    #vel nestrada ^^
 
     def logout(self):
         session.pop('user_id', None)

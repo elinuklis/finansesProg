@@ -21,16 +21,52 @@
     {% endwith %}
 
     <form method="POST">
-        <div class="mb-3">
-            <label for="nosaukums" class="form-label">Mērķa nosaukums</label>
-            <input type="text" class="form-control" name="nosaukums" required>
+        <div class="form-group">
+            <label for="goal_type">Mērķa tips</label>
+            <select name="goal_type" id="goal_type" class="form-control" required>
+                <option value="Uzkrājums">Uzkrājums</option>
+                <option value="Tēriņu ierobežojums">Tēriņu ierobežojums</option>
+            </select>
         </div>
-        <div class="mb-3">
-            <label for="merka_summa" class="form-label">Mērķa summa</label>
-            <input type="number" class="form-control" name="merka_summa" required>
+        
+        <div class="form-group">
+            <label for="nosaukums">Mērķa nosaukums</label>
+            <input type="text" name="nosaukums" id="nosaukums" class="form-control" required>
         </div>
+        
+        <div class="form-group">
+            <label for="summa">Summa</label>
+            <input type="number" name="summa" id="summa" class="form-control" required>
+        </div>
+    
+        <div class="form-group" id="category_group" style="display: none;">
+            <label for="category">Kategorija</label>
+            <select name="category" id="category" class="form-control">
+                <option value="Pārtika">Pārtika</option>
+                <option value="Transports">Transports</option>
+                <option value="Izklaide">Izklaide</option>
+                <!-- bus vel kategorijas -->
+            </select>
+        </div>
+    
+        <div class="form-group">
+            <label for="periods">Periods</label>
+            <input type="text" name="periods" id="periods" class="form-control" placeholder="Mēnesis, nedēļa, pielāgots datums" required>
+        </div>
+    
         <button type="submit" class="btn btn-primary">Pievienot mērķi</button>
     </form>
+    
+    <script>
+        document.getElementById('goal_type').addEventListener('change', function() {
+            var goalType = this.value;
+            if (goalType === "Tēriņu ierobežojums") {
+                document.getElementById('category_group').style.display = 'block';
+            } else {
+                document.getElementById('category_group').style.display = 'none';
+            }
+        });
+    </script>
 
     <h3 class="mt-4">Esošie mērķi</h3>
     <ul class="list-group">
