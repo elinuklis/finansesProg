@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "finansesprogr.db")
+DB_PATH = os.path.join(BASE_DIR, "finansesprogr1.db")
 
 
 class DatabaseManager:
