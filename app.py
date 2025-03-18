@@ -46,7 +46,7 @@ class FinansuApp:
         self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi, methods=['GET', 'POST'])
         self.app.add_url_rule('/merki', 'merki', self.merki, methods=['GET', 'POST'])
         self.app.add_url_rule('/logout', 'logout', self.logout)
-        self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki)
+        self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki, methods=['POST'])
 
     def index(self):
         if 'user_id' in session:
@@ -201,8 +201,6 @@ class FinansuApp:
         flash("Mērķis veiksmīgi izdzēsts!", "success")
         return redirect(url_for('merki')) 
     
-    #vel nestrada ^^
-
     def logout(self):
         session.pop('user_id', None)
         flash("Tu esi izlogojies.", "success")
