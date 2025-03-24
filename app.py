@@ -46,6 +46,8 @@ class FinansuApp:
         self.app.add_url_rule('/izdevumi', 'izdevumi', self.izdevumi, methods=['GET', 'POST'])
         self.app.add_url_rule('/merki', 'merki', self.merki, methods=['GET', 'POST'])
         self.app.add_url_rule('/logout', 'logout', self.logout)
+        self.app.add_url_rule('/delete_ienakumi/<int:ienakumi_id>', 'delete_ienakumi', self.delete_ienakumi, methods=['POST'])
+        self.app.add_url_rule('/delete_izdevumi/<int:izdevumi_id>', 'delete_izdevumi', self.delete_izdevumi, methods=['POST'])
         self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki, methods=['POST'])
 
     def index(self):
@@ -134,7 +136,7 @@ class FinansuApp:
             return redirect(url_for('ienakumi'))
 
         ienakumi = self.db.execute_query(
-            "SELECT summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
+            "SELECT ienakumi_id, summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
         return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=kategorijas)
@@ -160,8 +162,9 @@ class FinansuApp:
             return redirect(url_for('izdevumi'))
 
         izdevumi = self.db.execute_query(
-            "SELECT summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
+            "SELECT izdevumi_id, summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
+
 
         return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=kategorijas)
 
@@ -189,6 +192,28 @@ class FinansuApp:
             (session['user_id'],), fetch_all=True)
         
         return render_template('merki.html', merki=merki)
+    
+    def delete_ienakumi(self, ienakumi_id):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+
+        self.db.execute_query(
+            "DELETE FROM Ienakumi WHERE user_id = ? AND ienakumi_id = ?",
+            (session['user_id'], ienakumi_id), commit=True)
+
+        flash("Ienākums veiksmīgi izdzēsts!", "success")
+        return redirect(url_for('ienakumi'))
+
+    def delete_izdevumi(self, izdevumi_id):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+
+        self.db.execute_query(
+            "DELETE FROM Izdevumi WHERE user_id = ? AND izdevumi_id = ?",
+            (session['user_id'], izdevumi_id), commit=True)
+
+        flash("Izdevums veiksmīgi izdzēsts!", "success")
+        return redirect(url_for('izdevumi'))
     
     def delete_merki(self, merki_id):
         if 'user_id' not in session:
