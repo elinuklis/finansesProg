@@ -82,7 +82,11 @@
     <h3 class="mt-4">Esošie mērķi</h3>
     <ul class="list-group">
         {% for merkis in merki %}
-        {% set progress = (merkis[6] | float / merkis[3] | float * 100) | round(2) %}
+        {% if merkis[3] != 0 %}
+            {% set progress = (merkis[6] | float / merkis[3] | float * 100) | round(2) %}
+        {% else %}
+            {% set progress = 0 %}
+        {% endif %}
         <li class="list-group-item">
             <strong>{{ merkis[2] }}</strong> - Mērķis: {{ merkis[3] }}€, Sasniegts: {{ merkis[6] }}€
             <div class="progress mt-2">

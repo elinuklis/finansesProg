@@ -114,10 +114,16 @@ class FinansuApp:
 
         ienakumu_kopsumma = sum(float(ienakums[1]) for ienakums in ienakumi) if ienakumi else 0
         izdevumu_kopsumma = sum(float(izdevums[1]) for izdevums in izdevumi) if izdevumi else 0
-        atlikums = ienakumu_kopsumma - izdevumu_kopsumma  
+
+        # Pārbaudiet, vai kopsummas ir derīgas
+        if ienakumu_kopsumma == 0 or izdevumu_kopsumma == 0:
+            flash("Kopsummas nevar būt nulle", "danger")
+            return redirect(url_for('dashboard'))
+
+        atlikums = ienakumu_kopsumma - izdevumu_kopsumma
 
         merki = self.db.execute_query(
-            "SELECT merki_id, nosaukums, summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
+            "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
         return render_template(
@@ -263,6 +269,24 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
+        # Pirmkārt, iegūstam dzēstā ienākuma summu
+        ienakums = self.db.execute_query(
+            "SELECT summa, merki_id FROM Ienakumi WHERE user_id = ? AND ienakumi_id = ?",
+            (session['user_id'], ienakumi_id), fetch_one=True)
+
+        if ienakums:
+            summa, merki_id = ienakums
+
+            # Ja ienākumam bija saistīts mērķis
+            if merki_id:
+                # Samazinām pašreizējo summu uzkrājumā
+                self.db.execute_query(
+                    "UPDATE merki SET pasreizeja_summa = pasreizeja_summa - ? WHERE merki_id = ? AND user_id = ?",
+                    (summa, merki_id, session['user_id']),
+                    commit=True
+                )
+
+        # Dzēšam ienākumu no datubāzes
         self.db.execute_query(
             "DELETE FROM Ienakumi WHERE user_id = ? AND ienakumi_id = ?",
             (session['user_id'], ienakumi_id), commit=True)
@@ -305,8 +329,8 @@ class FinansuApp:
             flash("Ievadiet derīgu skaitli!", "danger")
             return redirect(url_for('merki'))
 
-        # Ja progress_amount ir 0, novērst dalīšanu ar nulli
-        if progress_amount == 0:
+        # Pārbaudiet, vai progress_amount ir lielāks par 0 pirms dalīšanas
+        if progress_amount <= 0:
             flash("Progresam jābūt lielākam par nulli!", "danger")
             return redirect(url_for('merki'))
 
@@ -326,6 +350,7 @@ class FinansuApp:
 
         flash("Progresu atjaunināts!", "success")
         return redirect(url_for('merki'))
+
     
     def logout(self):
         session.pop('user_id', None)
