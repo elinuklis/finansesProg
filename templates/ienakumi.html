@@ -31,22 +31,33 @@
         </div>
         <div class="mb-3">
             <label for="summa" class="form-label">Summa (€)</label>
-            <input type="number" class="form-control" name="summa" required>
+            <input type="text" class="form-control" name="summa" required
+                pattern="^\d+(\.\d{1,2})?$"
+                oninput="this.value = this.value.replace(/[^0-9.]/g, '')"
+                placeholder="Ievadiet summu">
+        </div>
+        <div class="mb-3">
+            <label for="merki_id" class="form-label">Pievienot mērķim (nav obligāti)</label>
+            <select class="form-control" name="merki_id">
+                <option value="none">-- Neizvēlēties mērķi --</option>
+                {% for merks in merki %}
+                    <option value="{{ merks[0] }}">{{ merks[1] }}</option>
+                {% endfor %}
+            </select>
         </div>
         <button type="submit" class="btn btn-success">Pievienot ienākumu</button>
     </form>
 
-    <!-- esosie ienakumi paradas leja -->
     <h3 class="mt-4">Esošie ienākumi</h3>
     <ul class="list-group">
-            {% for ienakums in ienakumi %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                {{ ienakums[2] }} - €{{ ienakums[1] }} 
-                <small class="text-muted">({{ ienakums[3] }})</small>
-                <form method="POST" action="{{ url_for('delete_ienakumi', ienakumi_id=ienakums[0]) }}" onsubmit="return confirm('Vai tiešām vēlaties dzēst šo ienākumu?');">
-                    <button type="submit" class="btn btn-danger btn-sm">Dzēst</button>
-                </form>
-            </li>
+        {% for ienakums in ienakumi %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ ienakums[2] }} - €{{ ienakums[1] }} 
+            <small class="datums">({{ ienakums[3] }})</small>
+            <form method="POST" action="{{ url_for('delete_ienakumi', ienakumi_id=ienakums[0]) }}" onsubmit="return confirm('Vai tiešām vēlaties dzēst šo ienākumu?');">
+                <button type="submit" class="btn btn-danger btn-sm">Dzēst</button>
+            </form>
+        </li>
         {% endfor %}
     </ul>
 

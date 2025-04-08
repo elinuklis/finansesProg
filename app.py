@@ -49,6 +49,8 @@ class FinansuApp:
         self.app.add_url_rule('/delete_ienakumi/<int:ienakumi_id>', 'delete_ienakumi', self.delete_ienakumi, methods=['POST'])
         self.app.add_url_rule('/delete_izdevumi/<int:izdevumi_id>', 'delete_izdevumi', self.delete_izdevumi, methods=['POST'])
         self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki, methods=['POST'])
+        self.app.add_url_rule('/update_progress/<int:merki_id>', 'update_progress', self.update_progress, methods=['POST'])
+        self.app.add_url_rule('/check_and_update_merki', 'check_and_update_merki', self.check_and_update_mērķus)
 
     def index(self):
         if 'user_id' in session:
@@ -103,18 +105,30 @@ class FinansuApp:
             return redirect(url_for('login'))
 
         ienakumi = self.db.execute_query(
-            "SELECT * FROM Ienakumi WHERE user_id = ?",
+            "SELECT ienakumi_id, summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
         izdevumi = self.db.execute_query(
-            "SELECT * FROM Izdevumi WHERE user_id = ?",
+            "SELECT izdevumi_id, summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
+
+        ienakumu_kopsumma = sum(float(ienakums[1]) for ienakums in ienakumi) if ienakumi else 0
+        izdevumu_kopsumma = sum(float(izdevums[1]) for izdevums in izdevumi) if izdevumi else 0
+        atlikums = ienakumu_kopsumma - izdevumu_kopsumma  
 
         merki = self.db.execute_query(
-            "SELECT * FROM Merki WHERE user_id = ?",
+            "SELECT merki_id, nosaukums, summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        return render_template('dashboard.html', ienakumi=ienakumi, izdevumi=izdevumi, merki=merki)
+        return render_template(
+            'dashboard.html', 
+            ienakumi=ienakumi, 
+            izdevumi=izdevumi, 
+            merki=merki, 
+            ienakumu_kopsumma=ienakumu_kopsumma, 
+            izdevumu_kopsumma=izdevumu_kopsumma, 
+            atlikums=atlikums
+        )
 
     def ienakumi(self):
         if 'user_id' not in session:
@@ -122,15 +136,45 @@ class FinansuApp:
 
         kategorijas = ['Alga', 'Pārdošana', 'Pabalsts', 'Dāvana', 'Nodokļu atmaksas', 'Investīciju ienākumi', 'Cits']
 
-        if request.method == 'POST':
-            summa = request.form['summa']
-            kategorija = request.form['kategorija']
+        # Iegūstam pieejamos mērķus lietotājam (tikai krājumu mērķus, ne tēriņu ierobežojumus)
+        merki = self.db.execute_query(
+            "SELECT merki_id, nosaukums FROM merki WHERE user_id = ? AND tips != 'Tēriņu ierobežojums'",
+            (session['user_id'],), fetch_all=True
+        )
 
+        if request.method == 'POST':
+            try:
+                summa = round(float(request.form['summa']), 2)
+            except ValueError:
+                flash("Lūdzu ievadi derīgu skaitli summas laukā.", "danger")
+                return redirect(url_for('ienakumi'))
+
+            kategorija = request.form['kategorija']
             datums = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+            # Pievienojam ienākumu
+            merki_id = request.form.get('merki_id')
+            if merki_id == "none":
+                merki_id = None
+
             self.db.execute_query(
-                "INSERT INTO Ienakumi (user_id, summa, kategorija, datums) VALUES (?, ?, ?, ?)",
-                (session['user_id'], summa, kategorija, datums), commit=True)
+                "INSERT INTO Ienakumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
+                (session['user_id'], summa, kategorija, datums, merki_id), commit=True)
+
+            # Ja lietotājs izvēlējies mērķi
+            merki_id = request.form.get('merki_id')
+            if merki_id and merki_id != "none":
+                try:
+                    merki_id = int(merki_id)
+                    self.db.execute_query(
+                        "UPDATE merki SET pasreizeja_summa = pasreizeja_summa + ? WHERE merki_id = ? AND user_id = ?",
+                        (summa, merki_id, session['user_id']),
+                        commit=True
+                    )
+                except ValueError:
+                    flash("Nederīgs mērķa ID.", "danger")
+
+            self.check_and_update_mērķus()
 
             flash("Ienākums veiksmīgi pievienots!", "success")
             return redirect(url_for('ienakumi'))
@@ -139,7 +183,7 @@ class FinansuApp:
             "SELECT ienakumi_id, summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=kategorijas)
+        return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=kategorijas, merki=merki)
 
 
     def izdevumi(self):
@@ -173,26 +217,46 @@ class FinansuApp:
             return redirect(url_for('login'))
 
         if request.method == 'POST':
+            tips = request.form['goal_type']
             nosaukums = request.form['nosaukums']
-            summa = request.form['summa']
-            kategorija = request.form.get('kategorija')
+            summa = float(request.form['summa'])
             periods = request.form['periods']
-            
+
+            if tips == "Tēriņu ierobežojums":
+                kategorija = request.form['category']
+            else:
+                kategorija = None
+
             sasniegts = 0
+            pasreizeja_summa = 0  # Pievienojam noklusējuma vērtību
 
             self.db.execute_query(
-                "INSERT INTO Merki (user_id, nosaukums, summa, sasniegts, kategorija, periods) VALUES (?, ?, ?, ?, ?, ?)",
-                (session['user_id'], nosaukums, summa, sasniegts, kategorija, periods), commit=True)
-            
+                "INSERT INTO merki (user_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (session['user_id'], nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips),
+                commit=True
+            )
+
             flash("Mērķis veiksmīgi pievienots!", "success")
             return redirect(url_for('merki'))
 
         merki = self.db.execute_query(
-            "SELECT * FROM Merki WHERE user_id = ?",
-            (session['user_id'],), fetch_all=True)
-        
+            "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips FROM merki WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True
+        )
+
         return render_template('merki.html', merki=merki)
     
+    def check_and_update_mērķus(self):
+        merki = self.db.execute_query(
+            "SELECT merki_id, summa, pasreizeja_summa FROM merki WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True)
+
+        for merks in merki:
+            if merks[2] >= merks[1]:
+                self.db.execute_query(
+                    "UPDATE merki SET sasniegts = 1 WHERE merki_id = ?",
+                    (merks[0],), commit=True)
+
     def delete_ienakumi(self, ienakumi_id):
         if 'user_id' not in session:
             return redirect(url_for('login'))
@@ -220,11 +284,46 @@ class FinansuApp:
             return redirect(url_for('login'))
 
         self.db.execute_query(
-            "DELETE FROM Merki WHERE user_id = ? AND merki_id = ?",
+            "DELETE FROM merki WHERE user_id = ? AND merki_id = ?",
             (session['user_id'], merki_id), commit=True)
 
         flash("Mērķis veiksmīgi izdzēsts!", "success")
         return redirect(url_for('merki')) 
+    
+    def update_progress(self, merki_id):
+        if 'user_id' not in session:
+            flash("Jums jābūt pieslēgušamies!", "danger")
+            return redirect(url_for('login'))
+
+        # Iegūstiet vērtības no formas
+        try:
+            summa = float(request.form.get('summa', 0))  # Konvertējiet uz float
+            progress_amount = float(request.form.get('progress_amount', 0))  # Konvertējiet uz float
+        except ValueError:
+            flash("Ievadiet derīgu skaitli!", "danger")
+            return redirect(url_for('merki'))
+
+        # Ja progress_amount ir 0, novērst dalīšanu ar nulli
+        if progress_amount == 0:
+            flash("Progresam jābūt lielākam par nulli!", "danger")
+            return redirect(url_for('merki'))
+
+        # Atjaunina pašreizējo summu
+        self.db.execute_query(
+            "UPDATE merki SET pasreizeja_summa = pasreizeja_summa + ? WHERE merki_id = ? AND user_id = ?",
+            (progress_amount, merki_id, session['user_id']),
+            commit=True
+        )
+
+        # Pārbauda, vai mērķis ir sasniegts
+        self.db.execute_query(
+            "UPDATE Merki SET sasniegts = 1 WHERE merki_id = ? AND pasreizeja_summa >= summa",
+            (merki_id,),
+            commit=True
+        )
+
+        flash("Progresu atjaunināts!", "success")
+        return redirect(url_for('merki'))
     
     def logout(self):
         session.pop('user_id', None)
@@ -234,7 +333,12 @@ class FinansuApp:
     def run(self):
         self.app.run(debug=True)
 
+    @property
+    def flask_app(self):
+        return self.app
+
+app = FinansuApp().flask_app
 
 if __name__ == '__main__':
-    app = FinansuApp()
-    app.run()
+    app.run(debug=True)
+

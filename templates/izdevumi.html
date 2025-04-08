@@ -31,7 +31,10 @@
         </div>
         <div class="mb-3">
             <label for="summa" class="form-label">Summa (€)</label>
-            <input type="number" class="form-control" name="summa" required>
+            <input type="text" class="form-control" name="summa" required
+                pattern="^\d+(\.\d{1,2})?$"
+                oninput="this.value = this.value.replace(/[^0-9.]/g, '')"
+                placeholder="Ievadiet summu">
         </div>
         <button type="submit" class="btn btn-success">Pievienot izdevumu</button>
     </form>
@@ -41,7 +44,7 @@
         {% for izdevums in izdevumi %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             {{ izdevums[2] }} - €{{ izdevums[1] }} 
-            <small class="text-muted">({{ izdevums[3] }})</small>
+            <small class="datums">({{ izdevums[3] }})</small>
             <form method="POST" action="{{ url_for('delete_izdevumi', izdevumi_id=izdevums[0]) }}" onsubmit="return confirm('Vai tiešām vēlaties dzēst šo izdevumu?');">
                 <button type="submit" class="btn btn-danger btn-sm">Dzēst</button>
             </form>

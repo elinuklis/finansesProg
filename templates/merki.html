@@ -10,14 +10,14 @@
     <h2>Mērķi</h2>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
     {% endwith %}
 
     <form method="POST">
@@ -41,7 +41,7 @@
     
         <div class="form-group" id="category_group" style="display: none;">
             <label for="category">Kategorija</label>
-            <select name="category" id="category" class="form-control">
+            <select name="category" id="category" class="form-control" required>
                 <option value="Pārtika">Pārtika</option>
                 <option value="Transports">Transports</option>
                 <option value="Izklaide">Izklaide</option>
@@ -58,7 +58,11 @@
     
         <div class="form-group">
             <label for="periods">Periods</label>
-            <input type="text" name="periods" id="periods" class="form-control" placeholder="Mēnesis, nedēļa, pielāgots datums" required>
+            <select name="periods" id="periods" class="form-control" required>
+                <option value="Mēnesis">Mēnesis</option>
+                <option value="Nedēļa">Nedēļa</option>
+                <option value="Pielāgots datums">Pielāgots datums</option>
+            </select>
         </div>
     
         <button type="submit" class="btn btn-primary">Pievienot mērķi</button>
@@ -77,16 +81,29 @@
 
     <h3 class="mt-4">Esošie mērķi</h3>
     <ul class="list-group">
-        {% for merki in merki %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                {{ merki[2] }} - {{ merki[3] }}€
-                <form method="POST" action="{{ url_for('delete_merki', merki_id=merki[0]) }}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Dzēst</button>
-                </form>
-            </li>
+        {% for merkis in merki %}
+        {% set progress = (merkis[3] | float / merkis[2] | float * 100) | round(2) %}
+        <li class="list-group-item">
+            <strong>{{ merkis[2] }}</strong> - Mērķis: {{ merkis[3] }}€, Sasniegts: {{ merkis[6] }}€
+            <div class="progress mt-2">
+                <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ progress }}%
+                </div>
+            </div>
+
+            {% if merkis[6] | float | safe < merkis[3] | float | safe %}
+            <small class="text-muted">Lai sasniegtu mērķi, tev vēl jāuzkrāj {{ (merkis[3] | float | safe - merkis[6] | float | safe) | round(2) }}€.</small>                <small class="text-success">Mērķis sasniegts!</small>
+            {% endif %}
+            <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
+                <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
+                <button type="submit" class="btn btn-success btn-sm">Pievienot</button>
+            </form>
+        </li>
         {% endfor %}
     </ul>
 
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">Atpakaļ</a>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

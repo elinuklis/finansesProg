@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panelis</title>
+    <title>Finanšu panelis</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
 </head>
 <body class="container mt-5">
-    <h1>Laipni lūgti finanšu panelī!</h1>
+    <h1 class="text-center mb-4">Laipni lūdzam finanšu panelī!</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -20,12 +21,98 @@
       {% endif %}
     {% endwith %}
 
-    <p>Pārvaldi savus ienākumus, izdevumus un mērķus.</p>
-    
-    <a href="/ienakumi" class="btn btn-primary">Ienākumi</a>
-    <a href="/izdevumi" class="btn btn-danger">Izdevumi</a>
-    <a href="/merki" class="btn btn-success">Mērķi</a>
-    <a href="/logout" class="btn btn-warning">Izrakstīties</a>
+    <div class="row mb-4">
+        <!-- Kopējais kopsavilkums -->
+        <div class="col-md-4">
+            <div class="card text-bg-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Kopējie ienākumi</h5>
+                    <p class="card-text fs-4">€ {{ ienakumu_kopsumma }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-bg-danger">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Kopējie izdevumi</h5>
+                    <p class="card-text fs-4">€ {{ izdevumu_kopsumma }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-bg-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Kopējais atlikums</h5>
+                    <p class="card-text fs-4">€ {{ atlikums }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pārskatu sadaļa -->
+    <div class="row">
+        <!-- Ienākumi -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">🤑 Ienākumi</div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for ienakums in ienakumi %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>
+                                    {{ ienakums[2] }} 
+                                    <span style="font-size: 12px; color: gray;">({{ ienakums[3] }})</span>
+                                </span>
+                                <span>€ {{ ienakums[1] }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Izdevumi -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">💸 Izdevumi</div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for izdevums in izdevumi %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>{{ izdevums[2] }} <span style="font-size: 12px; color: gray;">({{ izdevums[3] }})</span></span>
+                                <span>€ {{ izdevums[1] }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mērķi -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">🎯 Mērķi</div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for merki in merki %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>{{ merki[1] }} <span style="font-size: 12px; color: gray;">({{ merki[3] }}/{{ merki[2] }} €)</span></span>
+                                <span>{{ merki[5] }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigācija -->
+    <div class="text-center mt-4">
+        <a href="/ienakumi" class="btn btn-primary">Pievienot ienākumus</a>
+        <a href="/izdevumi" class="btn btn-danger">Pievienot izdevumus</a>
+        <a href="/merki" class="btn btn-success">Pievienot mērķi</a>
+        <a href="/logout" class="btn btn-warning">Izrakstīties</a>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
