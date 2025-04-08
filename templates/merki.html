@@ -82,7 +82,7 @@
     <h3 class="mt-4">Esošie mērķi</h3>
     <ul class="list-group">
         {% for merkis in merki %}
-        {% set progress = (merkis[3] | float / merkis[2] | float * 100) | round(2) %}
+        {% set progress = (merkis[6] | float / merkis[3] | float * 100) | round(2) %}
         <li class="list-group-item">
             <strong>{{ merkis[2] }}</strong> - Mērķis: {{ merkis[3] }}€, Sasniegts: {{ merkis[6] }}€
             <div class="progress mt-2">
@@ -90,10 +90,13 @@
                     {{ progress }}%
                 </div>
             </div>
-
-            {% if merkis[6] | float | safe < merkis[3] | float | safe %}
-            <small class="text-muted">Lai sasniegtu mērķi, tev vēl jāuzkrāj {{ (merkis[3] | float | safe - merkis[6] | float | safe) | round(2) }}€.</small>                <small class="text-success">Mērķis sasniegts!</small>
+        
+            {% if merkis[6] | float < merkis[3] | float %}
+                <small class="text-muted">Lai sasniegtu mērķi, tev vēl jāuzkrāj {{ (merkis[3] | float - merkis[6] | float) | round(2) }}€.</small>
+            {% else %}
+                <small class="text-success">Mērķis sasniegts!</small>
             {% endif %}
+        
             <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
                 <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
                 <button type="submit" class="btn btn-success btn-sm">Pievienot</button>

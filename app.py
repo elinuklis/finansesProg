@@ -50,7 +50,7 @@ class FinansuApp:
         self.app.add_url_rule('/delete_izdevumi/<int:izdevumi_id>', 'delete_izdevumi', self.delete_izdevumi, methods=['POST'])
         self.app.add_url_rule('/delete_merki/<int:merki_id>', 'delete_merki', self.delete_merki, methods=['POST'])
         self.app.add_url_rule('/update_progress/<int:merki_id>', 'update_progress', self.update_progress, methods=['POST'])
-        self.app.add_url_rule('/check_and_update_merki', 'check_and_update_merki', self.check_and_update_mērķus)
+        self.app.add_url_rule('/check_and_update_merki', 'check_and_update_merki', self.check_and_update_merkus)
 
     def index(self):
         if 'user_id' in session:
@@ -156,6 +156,8 @@ class FinansuApp:
             merki_id = request.form.get('merki_id')
             if merki_id == "none":
                 merki_id = None
+            else:
+                merki_id = int(merki_id)  # konvertē uz int tikai ja nav None
 
             self.db.execute_query(
                 "INSERT INTO Ienakumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
@@ -174,7 +176,7 @@ class FinansuApp:
                 except ValueError:
                     flash("Nederīgs mērķa ID.", "danger")
 
-            self.check_and_update_mērķus()
+            self.check_and_update_merkus()
 
             flash("Ienākums veiksmīgi pievienots!", "success")
             return redirect(url_for('ienakumi'))
@@ -246,7 +248,7 @@ class FinansuApp:
 
         return render_template('merki.html', merki=merki)
     
-    def check_and_update_mērķus(self):
+    def check_and_update_merkus(self):
         merki = self.db.execute_query(
             "SELECT merki_id, summa, pasreizeja_summa FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
