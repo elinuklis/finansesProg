@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
+import requests
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "finansesprogr1.db")
@@ -99,6 +100,8 @@ class FinansuApp:
             else:
                 flash("Nepareizs lietotājvārds vai parole.", "danger")
         return render_template('login.html')
+    
+    
 
     def dashboard(self):
         if 'user_id' not in session:
@@ -114,27 +117,36 @@ class FinansuApp:
 
         ienakumu_kopsumma = sum(float(ienakums[1]) for ienakums in ienakumi) if ienakumi else 0
         izdevumu_kopsumma = sum(float(izdevums[1]) for izdevums in izdevumi) if izdevumi else 0
-
-        # Pārbaudiet, vai kopsummas ir derīgas
-        if ienakumu_kopsumma == 0 or izdevumu_kopsumma == 0:
-            flash("Kopsummas nevar būt nulle", "danger")
-            return redirect(url_for('dashboard'))
-
         atlikums = ienakumu_kopsumma - izdevumu_kopsumma
 
         merki = self.db.execute_query(
             "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
+        api_key = "A1263AWJ0HRLT16G" 
+        valutas_kurss = None
+        konvertets_atlikums = None
+        try:
+            url = f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey={api_key}"
+            response = requests.get(url)
+            data = response.json()
+            valutas_kurss = float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
+            konvertets_atlikums = round(atlikums * valutas_kurss, 2)
+        except Exception as e:
+            flash(f"Neizdevās iegūt valūtas kursu: {e}", "warning")
+
         return render_template(
-            'dashboard.html', 
-            ienakumi=ienakumi, 
-            izdevumi=izdevumi, 
-            merki=merki, 
-            ienakumu_kopsumma=ienakumu_kopsumma, 
-            izdevumu_kopsumma=izdevumu_kopsumma, 
-            atlikums=atlikums
+            'dashboard.html',
+            ienakumi=ienakumi,
+            izdevumi=izdevumi,
+            merki=merki,
+            ienakumu_kopsumma=ienakumu_kopsumma,
+            izdevumu_kopsumma=izdevumu_kopsumma,
+            atlikums=atlikums,
+            valutas_kurss=valutas_kurss,
+            konvertets_atlikums=konvertets_atlikums
         )
+    
 
     def ienakumi(self):
         if 'user_id' not in session:
@@ -142,7 +154,6 @@ class FinansuApp:
 
         kategorijas = ['Alga', 'Pārdošana', 'Pabalsts', 'Dāvana', 'Nodokļu atmaksas', 'Investīciju ienākumi', 'Cits']
 
-        # Iegūstam pieejamos mērķus lietotājam (tikai krājumu mērķus, ne tēriņu ierobežojumus)
         merki = self.db.execute_query(
             "SELECT merki_id, nosaukums FROM merki WHERE user_id = ? AND tips != 'Tēriņu ierobežojums'",
             (session['user_id'],), fetch_all=True
@@ -158,12 +169,12 @@ class FinansuApp:
             kategorija = request.form['kategorija']
             datums = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            # Pievienojam ienākumu
+            # Pievieno ienākumu
             merki_id = request.form.get('merki_id')
             if merki_id == "none":
                 merki_id = None
             else:
-                merki_id = int(merki_id)  # konvertē uz int tikai ja nav None
+                merki_id = int(merki_id)  # konvertē uz int tikai ja nav none
 
             self.db.execute_query(
                 "INSERT INTO Ienakumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
@@ -198,10 +209,9 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
-        # Kategorijas, kuras var izvēlēties
+        # kategorijas kuras var izvēlēties
         kategorijas = ['Pārtika', 'Transports', 'Īre', 'Izklaide', 'Apģērbs', 'Veselība', 'Izglītība', 'Sports', 'Dāvanas, ziedojumi', 'Rēķini', 'Cits']
         
-        # Iegūstam mērķus no datu bāzes, lai parādītu izvēlēs
         merki = self.db.execute_query(
             "SELECT merki_id, nosaukums FROM Merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True
@@ -212,20 +222,19 @@ class FinansuApp:
             kategorija = request.form['kategorija']
             merki_id = request.form['merki_id']  # Ja ir izvēlēts mērķis
 
-            # Ja mērķis nav izvēlēts, ievietojam 'none'
             if merki_id == "none":
                 merki_id = None
             else:
-                merki_id = int(merki_id)  # Ja ir izvēlēts, pārveidojam to par skaitli
+                merki_id = int(merki_id)
 
             datums = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Pievienojam izdevumu datu bāzē, ieskaitot mērķi, ja tāds ir
+
             self.db.execute_query(
                 "INSERT INTO Izdevumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
                 (session['user_id'], summa, kategorija, datums, merki_id), commit=True)
 
-            # Ja ir izvēlēts mērķis, atjaunojam progresu
+
             if merki_id:
                 self.db.execute_query(
                     "UPDATE Merki SET pasreizeja_summa = pasreizeja_summa + ? WHERE merki_id = ? AND user_id = ?",
@@ -236,7 +245,7 @@ class FinansuApp:
             flash("Izdevums veiksmīgi pievienots!", "success")
             return redirect(url_for('izdevumi'))
 
-        # Iegūstam visus izdevumus un arī to saistītos mērķus
+
         izdevumi = self.db.execute_query(
             "SELECT Izdevumi.izdevumi_id, Izdevumi.summa, Izdevumi.kategorija, Izdevumi.datums, Merki.nosaukums AS merks "
             "FROM Izdevumi "
@@ -264,7 +273,7 @@ class FinansuApp:
                 kategorija = None
 
             sasniegts = 0
-            pasreizeja_summa = 0  # Pievienojam noklusējuma vērtību
+            pasreizeja_summa = 0 
 
             self.db.execute_query(
                 "INSERT INTO merki (user_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -297,7 +306,7 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
-        # Pirmkārt, iegūstam dzēstā ienākuma summu
+
         ienakums = self.db.execute_query(
             "SELECT summa, merki_id FROM Ienakumi WHERE user_id = ? AND ienakumi_id = ?",
             (session['user_id'], ienakumi_id), fetch_one=True)
@@ -305,16 +314,15 @@ class FinansuApp:
         if ienakums:
             summa, merki_id = ienakums
 
-            # Ja ienākumam bija saistīts mērķis
+
             if merki_id:
-                # Samazinām pašreizējo summu uzkrājumā
                 self.db.execute_query(
                     "UPDATE merki SET pasreizeja_summa = pasreizeja_summa - ? WHERE merki_id = ? AND user_id = ?",
                     (summa, merki_id, session['user_id']),
                     commit=True
                 )
 
-        # Dzēšam ienākumu no datubāzes
+
         self.db.execute_query(
             "DELETE FROM Ienakumi WHERE user_id = ? AND ienakumi_id = ?",
             (session['user_id'], ienakumi_id), commit=True)
@@ -349,15 +357,15 @@ class FinansuApp:
             flash("Jums jābūt pieslēgušamies!", "danger")
             return redirect(url_for('login'))
 
-        # Iegūstiet vērtības no formas
+
         try:
-            summa = float(request.form.get('summa', 0))  # Konvertējiet uz float
-            progress_amount = float(request.form.get('progress_amount', 0))  # Konvertējiet uz float
+            summa = float(request.form.get('summa', 0))  
+            progress_amount = float(request.form.get('progress_amount', 0)) 
         except ValueError:
             flash("Ievadiet derīgu skaitli!", "danger")
             return redirect(url_for('merki'))
 
-        # Pārbaudiet, vai progress_amount ir lielāks par 0 pirms dalīšanas
+
         if progress_amount <= 0:
             flash("Progresam jābūt lielākam par nulli!", "danger")
             return redirect(url_for('merki'))

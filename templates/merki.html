@@ -100,7 +100,10 @@
                         <br>
                         Mērķis: {{ merka_summa }}€, Sasniegts: {{ sasniegta_summa }}€
                         <div class="progress mt-2">
-                            <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar" role="progressbar"
+                                 style="width: {{ progress }}%;"
+                                 aria-valuenow="{{ progress }}"
+                                 aria-valuemin="0" aria-valuemax="100">
                                 {{ progress }}%
                             </div>
                         </div>
@@ -118,7 +121,7 @@
                 </div>
 
                 {% if sasniegta_summa < merka_summa %}
-                    <!-- Tikai tad, ja nav sasniegts, rādām pievienošanas formu -->
+                    <!-- Tikai tad, ja nav sasniegts, rāda pievienošanas formu -->
                     <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
                         <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
                         <button type="submit" class="btn btn-success btn-sm">Pievienot</button>
