@@ -198,27 +198,55 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
+        # Kategorijas, kuras var izvēlēties
         kategorijas = ['Pārtika', 'Transports', 'Īre', 'Izklaide', 'Apģērbs', 'Veselība', 'Izglītība', 'Sports', 'Dāvanas, ziedojumi', 'Rēķini', 'Cits']
+        
+        # Iegūstam mērķus no datu bāzes, lai parādītu izvēlēs
+        merki = self.db.execute_query(
+            "SELECT merki_id, nosaukums FROM Merki WHERE user_id = ?",
+            (session['user_id'],), fetch_all=True
+        )
 
         if request.method == 'POST':
             summa = request.form['summa']
             kategorija = request.form['kategorija']
+            merki_id = request.form['merki_id']  # Ja ir izvēlēts mērķis
+
+            # Ja mērķis nav izvēlēts, ievietojam 'none'
+            if merki_id == "none":
+                merki_id = None
+            else:
+                merki_id = int(merki_id)  # Ja ir izvēlēts, pārveidojam to par skaitli
 
             datums = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            # Pievienojam izdevumu datu bāzē, ieskaitot mērķi, ja tāds ir
             self.db.execute_query(
-                "INSERT INTO Izdevumi (user_id, summa, kategorija, datums) VALUES (?, ?, ?, ?)",
-                (session['user_id'], summa, kategorija, datums), commit=True)
+                "INSERT INTO Izdevumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
+                (session['user_id'], summa, kategorija, datums, merki_id), commit=True)
+
+            # Ja ir izvēlēts mērķis, atjaunojam progresu
+            if merki_id:
+                self.db.execute_query(
+                    "UPDATE Merki SET pasreizeja_summa = pasreizeja_summa + ? WHERE merki_id = ? AND user_id = ?",
+                    (summa, merki_id, session['user_id']),
+                    commit=True
+                )
 
             flash("Izdevums veiksmīgi pievienots!", "success")
             return redirect(url_for('izdevumi'))
 
+        # Iegūstam visus izdevumus un arī to saistītos mērķus
         izdevumi = self.db.execute_query(
-            "SELECT izdevumi_id, summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
-            (session['user_id'],), fetch_all=True)
+            "SELECT Izdevumi.izdevumi_id, Izdevumi.summa, Izdevumi.kategorija, Izdevumi.datums, Merki.nosaukums AS merks "
+            "FROM Izdevumi "
+            "LEFT JOIN Merki ON Izdevumi.merki_id = Merki.merki_id "
+            "WHERE Izdevumi.user_id = ?",
+            (session['user_id'],), fetch_all=True
+)
 
 
-        return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=kategorijas)
+        return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=kategorijas, merki=merki)
 
     def merki(self):
         if 'user_id' not in session:
@@ -348,7 +376,7 @@ class FinansuApp:
             commit=True
         )
 
-        flash("Progresu atjaunināts!", "success")
+        flash("Progress  atjaunināts!", "success")
         return redirect(url_for('merki'))
 
     

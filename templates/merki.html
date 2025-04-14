@@ -82,30 +82,49 @@
     <h3 class="mt-4">Esošie mērķi</h3>
     <ul class="list-group">
         {% for merkis in merki %}
-        {% if merkis[3] != 0 %}
-            {% set progress = (merkis[6] | float / merkis[3] | float * 100) | round(2) %}
-        {% else %}
-            {% set progress = 0 %}
-        {% endif %}
-        <li class="list-group-item">
-            <strong>{{ merkis[2] }}</strong> - Mērķis: {{ merkis[3] }}€, Sasniegts: {{ merkis[6] }}€
-            <div class="progress mt-2">
-                <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
-                    {{ progress }}%
-                </div>
-            </div>
-        
-            {% if merkis[6] | float < merkis[3] | float %}
-                <small class="text-muted">Lai sasniegtu mērķi, tev vēl jāuzkrāj {{ (merkis[3] | float - merkis[6] | float) | round(2) }}€.</small>
+            {% set merka_summa = merkis[2] %}
+            {% set sasniegta_summa = merkis[3] %}
+            {% if merka_summa != 0 %}
+                {% set progress = (sasniegta_summa | float / merka_summa | float * 100) | round(2) %}
             {% else %}
-                <small class="text-success">Mērķis sasniegts!</small>
+                {% set progress = 0 %}
             {% endif %}
-        
-            <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
-                <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
-                <button type="submit" class="btn btn-success btn-sm">Pievienot</button>
-            </form>
-        </li>
+            
+            <li class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ merkis[1] }}</strong>
+                        {% if merkis[5] %}
+                            <span class="badge bg-secondary ms-2">{{ merkis[5] }}</span>
+                        {% endif %}
+                        <br>
+                        Mērķis: {{ merka_summa }}€, Sasniegts: {{ sasniegta_summa }}€
+                        <div class="progress mt-2">
+                            <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ progress }}%
+                            </div>
+                        </div>
+                        {% if sasniegta_summa < merka_summa %}
+                            <small class="text-muted">Lai sasniegtu mērķi, tev vēl jāuzkrāj {{ (merka_summa - sasniegta_summa) | round(2) }}€.</small>
+                        {% else %}
+                            <small class="text-success">Mērķis sasniegts!</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Dzēšanas poga -->
+                    <form method="POST" action="{{ url_for('delete_merki', merki_id=merkis[0]) }}" onsubmit="return confirm('Vai tiešām vēlies dzēst šo mērķi?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm ms-3">Dzēst</button>
+                    </form>
+                </div>
+
+                {% if sasniegta_summa < merka_summa %}
+                    <!-- Tikai tad, ja nav sasniegts, rādām pievienošanas formu -->
+                    <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
+                        <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
+                        <button type="submit" class="btn btn-success btn-sm">Pievienot</button>
+                    </form>
+                {% endif %}
+            </li>
         {% endfor %}
     </ul>
 

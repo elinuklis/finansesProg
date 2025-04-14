@@ -29,6 +29,7 @@
                 {% endfor %}
             </select>
         </div>
+
         <div class="mb-3">
             <label for="summa" class="form-label">Summa (€)</label>
             <input type="text" class="form-control" name="summa" required
@@ -36,6 +37,17 @@
                 oninput="this.value = this.value.replace(/[^0-9.]/g, '')"
                 placeholder="Ievadiet summu">
         </div>
+
+        <div class="mb-3">
+            <label for="merki_id" class="form-label">Pievienot mērķim (nav obligāti)</label>
+            <select class="form-control" name="merki_id">
+                <option value="none">-- Neizvēlēties mērķi --</option>
+                {% for merks in merki %}
+                    <option value="{{ merks[0] }}">{{ merks[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <button type="submit" class="btn btn-success">Pievienot izdevumu</button>
     </form>
 
@@ -43,13 +55,16 @@
     <ul class="list-group">
         {% for izdevums in izdevumi %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ izdevums[2] }} - €{{ izdevums[1] }} 
+            {{ izdevums[2] }} - €{{ izdevums[1] }}
+            {% if izdevums[4] %}
+                <span class="badge bg-info">{{ izdevums[4] }}</span>
+            {% endif %}
             <small class="datums">({{ izdevums[3] }})</small>
             <form method="POST" action="{{ url_for('delete_izdevumi', izdevumi_id=izdevums[0]) }}" onsubmit="return confirm('Vai tiešām vēlaties dzēst šo izdevumu?');">
                 <button type="submit" class="btn btn-danger btn-sm">Dzēst</button>
             </form>
         </li>
-    {% endfor %}
+        {% endfor %}
     </ul>
 
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">Atpakaļ</a>
