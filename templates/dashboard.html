@@ -9,6 +9,24 @@
 <body class="container mt-5">
     <h1 class="text-center mb-4">Laipni lūdzam finanšu panelī!</h1>
 
+    <!-- Valūtas izvēles forma -->
+    <form method="get" action="{{ url_for('dashboard') }}" class="text-center mb-3">
+        <label for="valuta" class="form-label">Izvēlies valūtu:</label>
+        <select name="valuta" id="valuta" class="form-select d-inline-block w-auto ms-2" onchange="this.form.submit()">
+            {% for valuta in valutas_kursi.keys() %}
+                <option value="{{ valuta }}" {% if valuta == selected_currency %}selected{% endif %}>
+                    {{ valuta }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if selected_currency in konvertetie_atlikumi %}
+        <p class="text-center">
+            Atlikums {{ selected_currency }}: <strong>{{ valutas_simbols }} {{ konvertetie_atlikumi[selected_currency] }}</strong>
+        </p>
+    {% endif %}
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -42,6 +60,7 @@
             <div class="card text-bg-success">
                 <div class="card-body text-center">
                     <h5 class="card-title">Kopējais atlikums</h5>
+                    <!-- Saglabājam atlikumu kā eiro -->
                     <p class="card-text fs-4">€ {{ atlikums }}</p>
                 </div>
             </div>

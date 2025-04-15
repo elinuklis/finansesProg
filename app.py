@@ -107,10 +107,10 @@ class FinansuApp:
         if 'user_id' not in session:
             return redirect(url_for('login'))
 
+        # Ienākumu/izdevumu un mērķu dati
         ienakumi = self.db.execute_query(
             "SELECT ienakumi_id, summa, kategorija, datums FROM Ienakumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
-
         izdevumi = self.db.execute_query(
             "SELECT izdevumi_id, summa, kategorija, datums FROM Izdevumi WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
@@ -123,17 +123,43 @@ class FinansuApp:
             "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        api_key = "A1263AWJ0HRLT16G" 
-        valutas_kurss = None
-        konvertets_atlikums = None
-        try:
-            url = f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey={api_key}"
-            response = requests.get(url)
-            data = response.json()
-            valutas_kurss = float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
-            konvertets_atlikums = round(atlikums * valutas_kurss, 2)
-        except Exception as e:
-            flash(f"Neizdevās iegūt valūtas kursu: {e}", "warning")
+        # Atļautās valūtas
+        target_currencies = ['USD', 'GBP', 'JPY']
+        valutas_kursi = {}
+        konvertetie_atlikumi = {}
+        api_key = "39c34f01ecdae02f92868c0cf25a1f28"
+
+        for currency in target_currencies:
+            try:
+                url = f"http://data.fixer.io/api/latest?access_key={api_key}&base=EUR&symbols={currency}"
+                response = requests.get(url)
+                data = response.json()
+
+                # Ja API atbilde satur kursus, pievieno tos
+                if "rates" in data:
+                    kurss = data["rates"].get(currency, None)
+                    if kurss:
+                        valutas_kursi[currency] = kurss
+                        konvertetie_atlikumi[currency] = round(atlikums * kurss, 2)
+                    else:
+                        flash(f"Kļūda saņemot kursu uz {currency}", "warning")
+                else:
+                    flash(f"Kļūda ielādējot kursu uz {currency}: {data.get('error', 'Nezināma kļūda')}", "warning")
+            except Exception as e:
+                flash(f"Kļūda ielādējot kursu uz {currency}: {e}", "warning")
+                valutas_kursi[currency] = None
+                konvertetie_atlikumi[currency] = None
+
+        # Iegūst izvēlēto valūtu no dropdown
+        selected_currency = request.args.get('valuta', 'USD')
+
+        valutu_simboli = {
+            'USD': '$',
+            'GBP': '£',
+            'JPY': '¥',
+            'EUR': '€'
+        }
+        valutas_simbols = valutu_simboli.get(selected_currency, '')
 
         return render_template(
             'dashboard.html',
@@ -143,8 +169,10 @@ class FinansuApp:
             ienakumu_kopsumma=ienakumu_kopsumma,
             izdevumu_kopsumma=izdevumu_kopsumma,
             atlikums=atlikums,
-            valutas_kurss=valutas_kurss,
-            konvertets_atlikums=konvertets_atlikums
+            valutas_kursi=valutas_kursi,
+            konvertetie_atlikumi=konvertetie_atlikumi,
+            selected_currency=selected_currency,
+            valutas_simbols=valutas_simbols
         )
     
 
