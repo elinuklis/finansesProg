@@ -18,18 +18,18 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST">
+        <form method="POST" onsubmit="return validateForm()">
             <div class="mb-3">
                 <label for="lietotajvards" class="form-label">Lietotājvārds</label>
                 <input type="text" class="form-control" name="lietotajvards" required>
             </div>
             <div class="mb-3">
                 <label for="parole" class="form-label">Parole</label>
-                <input type="password" class="form-control" name="parole" required>
+                <input type="password" class="form-control" name="parole" minlength="5" required>
             </div>
             <div class="mb-3">
                 <label for="parole2" class="form-label">Apstiprini paroli</label>
-                <input type="password" class="form-control" name="parole2" required>
+                <input type="password" class="form-control" name="parole2" minlength="5" required>
             </div>
             <button type="submit" class="btn btn-primary w-100">Reģistrēties</button>
         </form>

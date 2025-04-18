@@ -68,6 +68,10 @@ class FinansuApp:
                 flash("Paroles nesakrīt!", "danger")
                 return redirect(url_for('register'))
 
+            if len(parole) < 5:
+                flash("Parolei jābūt vismaz 5 simbolus garai!", "danger")
+                return redirect(url_for('register'))
+
             hashed_password = generate_password_hash(parole)
 
             user_exists = self.db.execute_query(
@@ -122,6 +126,10 @@ class FinansuApp:
         merki = self.db.execute_query(
             "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
+
+        # Pārbaudi, vai merki ir None un aizstāj ar tukšu sarakstu
+        if merki is None:
+            merki = []
 
         # Atļautās valūtas
         target_currencies = ['USD', 'GBP', 'JPY']
@@ -186,6 +194,10 @@ class FinansuApp:
             "SELECT merki_id, nosaukums FROM merki WHERE user_id = ? AND tips != 'Tēriņu ierobežojums'",
             (session['user_id'],), fetch_all=True
         )
+
+        # Pārbaudi, vai merki ir None un aizstāj ar tukšu sarakstu
+        if merki is None:
+            merki = []
 
         if request.method == 'POST':
             try:
@@ -287,35 +299,38 @@ class FinansuApp:
 
     def merki(self):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
-
+            return redirect('/login')
+        
         if request.method == 'POST':
-            tips = request.form['goal_type']
             nosaukums = request.form['nosaukums']
-            summa = float(request.form['summa'])
-            periods = request.form['periods']
-
-            if tips == "Tēriņu ierobežojums":
-                kategorija = request.form['category']
-            else:
-                kategorija = None
+            summa = request.form['summa']
+            pasreizeja_summa = request.form.get('pasreizeja_summa', 0)
+            tips = request.form['goal_type']  # Pārliecinies, ka šis sakrīt ar HTML!
 
             sasniegts = 0
-            pasreizeja_summa = 0 
+
+            try:
+                pasreizeja_summa = float(pasreizeja_summa)
+                summa = float(summa)
+            except ValueError:
+                flash("Lūdzu ievadiet skaitliskas vērtības summai.", "danger")
+                return redirect('/merki')
 
             self.db.execute_query(
-                "INSERT INTO merki (user_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (session['user_id'], nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips),
+                "INSERT INTO merki (user_id, nosaukums, summa, pasreizeja_summa, sasniegts, tips) VALUES (?, ?, ?, ?, ?, ?)",
+                (session['user_id'], nosaukums, summa, pasreizeja_summa, sasniegts, tips),
                 commit=True
             )
 
-            flash("Mērķis veiksmīgi pievienots!", "success")
-            return redirect(url_for('merki'))
-
+            return redirect('/merki')
+        
         merki = self.db.execute_query(
-            "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods, tips FROM merki WHERE user_id = ?",
+            "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, tips FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True
         )
+
+        if merki is None:
+            merki = []
 
         return render_template('merki.html', merki=merki)
     
