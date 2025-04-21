@@ -69,6 +69,6 @@
 
 ## Saistītie resursi
 
-- 🔗 Mājaslapa: [elinuklis.pythonanywhere.com](https://elinuklis.pythonanywhere.com)
-- 💾 [Programmas kods GitHub](https://github.com/elinuklis/finansesProg)
-- 🎨 [Figma dizains](https://www.figma.com/design/KgTjd6dKwbpQCh9ohAzZCs/finanseskkas?node-id=4-70)
+- Mājaslapa: [elinuklis.pythonanywhere.com](https://elinuklis.pythonanywhere.com)
+- [Programmas kods GitHub](https://github.com/elinuklis/finansesProg)
+- [Figma dizains](https://www.figma.com/design/KgTjd6dKwbpQCh9ohAzZCs/finanseskkas?node-id=4-70)
