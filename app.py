@@ -145,7 +145,7 @@ class FinansuApp:
         target_currencies = ['USD', 'GBP', 'JPY']
         valutas_kursi = {}
         konvertetie_atlikumi = {}
-        api_key = "39c34f01ecdae02f92868c0cf25a1f28"
+        api_key = "07e8fd56afab7f026c1f5fedb415e202"
 
         for currency in target_currencies:
             try:
