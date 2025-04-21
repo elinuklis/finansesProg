@@ -60,21 +60,18 @@
             <div class="card text-bg-success">
                 <div class="card-body text-center">
                     <h5 class="card-title">Kopējais atlikums</h5>
-                    <!-- Saglabājam atlikumu kā eiro -->
                     <p class="card-text fs-4">€ {{ atlikums }}</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Pievienot konvertēto atlikumu USD, ja tas ir pieejams -->
     {% if konvertets_atlikums %}
         <div class="text-center mt-3">
             <p>Atlikums USD: <strong>$ {{ konvertets_atlikums }}</strong> (1 EUR = {{ valutas_kurss }} USD)</p>
         </div>
     {% endif %}
 
-    <!-- Pārskatu sadaļa -->
     <div class="row">
         <!-- Ienākumi -->
         <div class="col-md-4">

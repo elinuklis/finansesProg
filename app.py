@@ -4,7 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
 import requests
+import re
 
+#ceļš uz datubāzi
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "finansesprogr1.db")
 
@@ -37,7 +39,8 @@ class FinansuApp:
         self.app.config['SECRET_KEY'] = 'supersecretkey'
         self.db = DatabaseManager(DB_PATH)
         self.setup_routes()
-
+    
+    #maršrutu definēšana
     def setup_routes(self):
         self.app.add_url_rule('/', 'index', self.index)
         self.app.add_url_rule('/register', 'register', self.register, methods=['GET', 'POST'])
@@ -57,13 +60,20 @@ class FinansuApp:
         if 'user_id' in session:
             return redirect(url_for('dashboard'))
         return redirect(url_for('login'))
-
+    
+    #reģistracija
     def register(self):
         if request.method == 'POST':
             lietotajvards = request.form['lietotajvards']
             parole = request.form['parole']
             parole2 = request.form['parole2']
 
+            #validācija lietotājvārdam
+            if not re.match("^[A-Za-z0-9]+$", lietotajvards):
+                flash("Lietotājvārdā drīkst būt tikai burti un cipari, bez atstarpēm vai simboliem!", "danger")
+                return redirect(url_for('register'))
+
+            #paroļu pārbaude
             if parole != parole2:
                 flash("Paroles nesakrīt!", "danger")
                 return redirect(url_for('register'))
@@ -74,6 +84,7 @@ class FinansuApp:
 
             hashed_password = generate_password_hash(parole)
 
+            #pārbauda vai lietotājs jau eksistē
             user_exists = self.db.execute_query(
                 "SELECT * FROM Lietotajs WHERE lietotajvards = ?", (lietotajvards,), fetch_one=True)
             if user_exists:
@@ -88,6 +99,7 @@ class FinansuApp:
             return redirect(url_for('login'))
         return render_template('register.html')
 
+    #pieslēgšanās
     def login(self):
         if request.method == 'POST':
             lietotajvards = request.form['lietotajvards']
@@ -127,11 +139,9 @@ class FinansuApp:
             "SELECT merki_id, nosaukums, summa, pasreizeja_summa, sasniegts, kategorija, periods FROM merki WHERE user_id = ?",
             (session['user_id'],), fetch_all=True)
 
-        # Pārbaudi, vai merki ir None un aizstāj ar tukšu sarakstu
         if merki is None:
             merki = []
 
-        # Atļautās valūtas
         target_currencies = ['USD', 'GBP', 'JPY']
         valutas_kursi = {}
         konvertetie_atlikumi = {}
@@ -143,7 +153,7 @@ class FinansuApp:
                 response = requests.get(url)
                 data = response.json()
 
-                # Ja API atbilde satur kursus, pievieno tos
+           
                 if "rates" in data:
                     kurss = data["rates"].get(currency, None)
                     if kurss:
@@ -158,7 +168,6 @@ class FinansuApp:
                 valutas_kursi[currency] = None
                 konvertetie_atlikumi[currency] = None
 
-        # Iegūst izvēlēto valūtu no dropdown
         selected_currency = request.args.get('valuta', 'USD')
 
         valutu_simboli = {
@@ -183,7 +192,7 @@ class FinansuApp:
             valutas_simbols=valutas_simbols
         )
     
-
+    #ienakumi
     def ienakumi(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
@@ -195,7 +204,7 @@ class FinansuApp:
             (session['user_id'],), fetch_all=True
         )
 
-        # Pārbaudi, vai merki ir None un aizstāj ar tukšu sarakstu
+        
         if merki is None:
             merki = []
 
@@ -209,18 +218,18 @@ class FinansuApp:
             kategorija = request.form['kategorija']
             datums = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            # Pievieno ienākumu
+            
             merki_id = request.form.get('merki_id')
             if merki_id == "none":
                 merki_id = None
             else:
-                merki_id = int(merki_id)  # konvertē uz int tikai ja nav none
+                merki_id = int(merki_id)  #konvertē uz int tikai ja nav none
 
             self.db.execute_query(
                 "INSERT INTO Ienakumi (user_id, summa, kategorija, datums, merki_id) VALUES (?, ?, ?, ?, ?)",
                 (session['user_id'], summa, kategorija, datums, merki_id), commit=True)
 
-            # Ja lietotājs izvēlējies mērķi
+            
             merki_id = request.form.get('merki_id')
             if merki_id and merki_id != "none":
                 try:
@@ -244,7 +253,7 @@ class FinansuApp:
 
         return render_template('ienakumi.html', ienakumi=ienakumi, kategorijas=kategorijas, merki=merki)
 
-
+    #izdevumi
     def izdevumi(self):
         if 'user_id' not in session:
             return redirect(url_for('login'))
@@ -260,7 +269,7 @@ class FinansuApp:
         if request.method == 'POST':
             summa = request.form['summa']
             kategorija = request.form['kategorija']
-            merki_id = request.form['merki_id']  # Ja ir izvēlēts mērķis
+            merki_id = request.form['merki_id']  
 
             if merki_id == "none":
                 merki_id = None
@@ -297,6 +306,7 @@ class FinansuApp:
 
         return render_template('izdevumi.html', izdevumi=izdevumi, kategorijas=kategorijas, merki=merki)
 
+    #merki
     def merki(self):
         if 'user_id' not in session:
             return redirect('/login')
@@ -305,7 +315,7 @@ class FinansuApp:
             nosaukums = request.form['nosaukums']
             summa = request.form['summa']
             pasreizeja_summa = request.form.get('pasreizeja_summa', 0)
-            tips = request.form['goal_type']  # Pārliecinies, ka šis sakrīt ar HTML!
+            tips = request.form['goal_type'] 
 
             sasniegts = 0
 
@@ -333,7 +343,7 @@ class FinansuApp:
             merki = []
 
         return render_template('merki.html', merki=merki)
-    
+    #pārbauda un atjaunina mērķus
     def check_and_update_merkus(self):
         merki = self.db.execute_query(
             "SELECT merki_id, summa, pasreizeja_summa FROM merki WHERE user_id = ?",
@@ -344,7 +354,7 @@ class FinansuApp:
                 self.db.execute_query(
                     "UPDATE merki SET sasniegts = 1 WHERE merki_id = ?",
                     (merks[0],), commit=True)
-
+    #dzesšana
     def delete_ienakumi(self, ienakumi_id):
         if 'user_id' not in session:
             return redirect(url_for('login'))
@@ -394,7 +404,7 @@ class FinansuApp:
 
         flash("Mērķis veiksmīgi izdzēsts!", "success")
         return redirect(url_for('merki')) 
-    
+    #atjaunina progresu
     def update_progress(self, merki_id):
         if 'user_id' not in session:
             flash("Jums jābūt pieslēgušamies!", "danger")
@@ -413,14 +423,14 @@ class FinansuApp:
             flash("Progresam jābūt lielākam par nulli!", "danger")
             return redirect(url_for('merki'))
 
-        # Atjaunina pašreizējo summu
+        #atjaunina pašreizējo summu
         self.db.execute_query(
             "UPDATE merki SET pasreizeja_summa = pasreizeja_summa + ? WHERE merki_id = ? AND user_id = ?",
             (progress_amount, merki_id, session['user_id']),
             commit=True
         )
 
-        # Pārbauda, vai mērķis ir sasniegts
+        #pārbauda, vai mērķis ir sasniegts
         self.db.execute_query(
             "UPDATE Merki SET sasniegts = 1 WHERE merki_id = ? AND pasreizeja_summa >= summa",
             (merki_id,),

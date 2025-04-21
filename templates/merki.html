@@ -91,14 +91,14 @@
                         {% endif %}
                     </div>
 
-                    <!-- Dzēšanas poga -->
+                    
                     <form method="POST" action="{{ url_for('delete_merki', merki_id=merkis[0]) }}" onsubmit="return confirm('Vai tiešām vēlies dzēst šo mērķi?');">
                         <button type="submit" class="btn btn-outline-danger btn-sm ms-3">Dzēst</button>
                     </form>
                 </div>
 
                 {% if sasniegta_summa < merka_summa %}
-                    <!-- Tikai tad, ja nav sasniegts, rāda pievienošanas formu -->
+                   
                     <form method="POST" action="{{ url_for('update_progress', merki_id=merkis[0]) }}" class="mt-2 d-flex">
                         <input type="number" name="progress_amount" step="any" min="0" class="form-control me-2" placeholder="Pievienot summu" required>
                         <button type="submit" class="btn btn-success btn-sm">Pievienot</button>
