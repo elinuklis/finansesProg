@@ -1,17 +1,17 @@
 
-# Finanšu panelis 💰
+# Finanšu panelis
 
 ## Projekta apraksts
 **Finanšu panelis** ir tīmekļa lietotne, kas palīdz lietotājiem pārvaldīt personīgās finanses, reģistrēt ienākumus un izdevumus, izvirzīt finanšu mērķus un pārskatīt atlikumu dažādās valūtās.
 
 ## Funkcionalitāte
 
-- ✅ Lietotāja reģistrācija un ielogošanās
-- 💸 Ienākumu pievienošana un dzēšana
-- 📉 Izdevumu pievienošana un dzēšana
-- 🎯 Mērķu izvirzīšana (uzkrājumi/tēriņu ierobežojumi), papildināšana un dzēšana
-- 🌍 Valūtas konvertācija (EUR uz USD, GBP, JPY)
-- 📊 Pārskatāms atlikums un mērķu progress
+- Lietotāja reģistrācija un ielogošanās
+- Ienākumu pievienošana un dzēšana
+- Izdevumu pievienošana un dzēšana
+- Mērķu izvirzīšana (uzkrājumi/tēriņu ierobežojumi), papildināšana un dzēšana
+- Valūtas konvertācija (EUR uz USD, GBP, JPY)
+- Pārskatāms atlikums un mērķu progress
 
 ## Izmantotās tehnoloģijas
 
@@ -45,9 +45,9 @@
    cd finansesProg
    ```
 
-2. Instalē nepieciešamās atkarības:
+2. Instalē nepieciešamās bibliotēkas:
    ```bash
-   pip install flask requests werkzeug
+   pip install -
    ```
 
 3. Palaid programmu:
@@ -62,23 +62,10 @@
 
 ## Prasības
 
-- Interneta savienojums (valūtas konvertēšanai)
+- Interneta savienojums 
 - Pārlūks: Chrome, Firefox, Edge, Opera, Brave
 - Python 3.8+ ar Flask
 
-## Izstrādes gaita
-
-Projekts veidots pēc **iteratīvā izstrādes modeļa**, ietverot šādus posmus:
-
-| Posms                     | Apraksts |
-|--------------------------|----------|
-| Projekta izpēte          | Aptauja, analogu salīdzinājums |
-| Prasību specificēšana    | Sistēmas funkcionalitātes apraksts |
-| Projektēšana             | Saskarnes skices, datubāzes modelis |
-| Izstrāde                 | Front-end un back-end izstrāde |
-| Testēšana                | Vienībtesti, akcepttesti |
-| Dokumentācija            | PPS, lietotāja ceļvedis, README |
-| Publicēšana              | PythonAnywhere, GitHub, Figma |
 
 ## Saistītie resursi
 
